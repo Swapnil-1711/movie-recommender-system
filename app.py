@@ -7,8 +7,10 @@ import os
 from collections import Counter
 
 # -------------------- CONFIG --------------------
+
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 PLACEHOLDER_POSTER = "assets/universal_movie_poster.png"
+st.write("TMDB key loaded:", TMDB_API_KEY)
 
 # -------------------- FETCH POSTER --------------------
 @st.cache_data(show_spinner=False)
@@ -68,6 +70,7 @@ movies = pd.DataFrame(movies_dict)
 
 # -------------------- RECOMMEND FUNCTION --------------------
 def recommend(movie):
+
     index = movies[movies["title"] == movie].index[0]
 
     target_vec = text_to_vector(movies.iloc[index]["tags"])
