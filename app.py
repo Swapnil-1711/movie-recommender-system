@@ -64,7 +64,6 @@ def cosine_similarity_manual(vec1, vec2):
 movies_dict = pickle.load(open("movie_dict.pkl", "rb"))
 movies = pd.DataFrame(movies_dict)
 
-similarity = build_similarity(movies)
 
 
 # -------------------- RECOMMEND FUNCTION --------------------
