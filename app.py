@@ -6,34 +6,35 @@ import requests
 import os
 from collections import Counter
 
-# -------------------- CONFIG --------------------
+# -------------------- PAGE CONFIG --------------------
+st.set_page_config(page_title="Movie Recommender", layout="wide")
 
+# -------------------- CONFIG --------------------
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 PLACEHOLDER_POSTER = "assets/universal_movie_poster.png"
-st.write("TMDB key loaded:", TMDB_API_KEY)
 
 # -------------------- FETCH POSTER --------------------
 @st.cache_data(show_spinner=False)
 def fetch_poster(movie_id):
-    if TMDB_API_KEY is None:
+    if not TMDB_API_KEY:
         return None
 
     url = f"https://api.themoviedb.org/3/movie/{movie_id}"
-    params = {
-        "api_key": TMDB_API_KEY,
-        "language": "en-US"
+
+    headers = {
+        "Authorization": f"Bearer {TMDB_API_KEY}",
+        "accept": "application/json"
     }
 
     try:
-        response = requests.get(url, params=params, timeout=5)
+        response = requests.get(url, headers=headers, timeout=5)
         response.raise_for_status()
         data = response.json()
-        poster_path = data.get("poster_path")
 
+        poster_path = data.get("poster_path")
         if poster_path:
             return "https://image.tmdb.org/t/p/w500" + poster_path
-        else:
-            return None
+        return None
 
     except requests.exceptions.RequestException:
         return None
@@ -44,7 +45,7 @@ def text_to_vector(text):
     return Counter(text.split())
 
 
-# -------------------- COSINE SIMILARITY (MANUAL) --------------------
+# -------------------- COSINE SIMILARITY --------------------
 def cosine_similarity_manual(vec1, vec2):
     intersection = set(vec1.keys()) & set(vec2.keys())
     numerator = sum(vec1[x] * vec2[x] for x in intersection)
@@ -58,30 +59,29 @@ def cosine_similarity_manual(vec1, vec2):
     return numerator / denominator
 
 
-# -------------------- BUILD SIMILARITY MATRIX --------------------
-
-
-
 # -------------------- LOAD DATA --------------------
 movies_dict = pickle.load(open("movie_dict.pkl", "rb"))
 movies = pd.DataFrame(movies_dict)
 
 
+# -------------------- CACHE TAG VECTORS --------------------
+@st.cache_data(show_spinner=False)
+def get_vectors(tags_series):
+    return tags_series.apply(text_to_vector).tolist()
 
-# -------------------- RECOMMEND FUNCTION --------------------
+
+# -------------------- RECOMMEND FUNCTION (FAST) --------------------
 def recommend(movie):
+    vectors = get_vectors(movies["tags"])
 
     index = movies[movies["title"] == movie].index[0]
-
-    target_vec = text_to_vector(movies.iloc[index]["tags"])
+    target_vec = vectors[index]
 
     scores = []
 
-    for i in range(len(movies)):
+    for i, vec in enumerate(vectors):
         if i == index:
             continue
-
-        vec = text_to_vector(movies.iloc[i]["tags"])
         score = cosine_similarity_manual(target_vec, vec)
         scores.append((i, score))
 
@@ -101,14 +101,14 @@ def recommend(movie):
 # -------------------- UI --------------------
 st.title("🎬 Movie Recommender System")
 
-selected_movie_name = st.selectbox(
+selected_movie = st.selectbox(
     "Select a movie:",
     movies["title"].values
 )
 
 if st.button("Recommend"):
     with st.spinner("🎥 Finding movies for you..."):
-        names, posters = recommend(selected_movie_name)
+        names, posters = recommend(selected_movie)
 
     cols = st.columns(5)
     for i, col in enumerate(cols):
