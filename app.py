@@ -57,17 +57,7 @@ def cosine_similarity_manual(vec1, vec2):
 
 
 # -------------------- BUILD SIMILARITY MATRIX --------------------
-@st.cache_data
-def build_similarity(movies):
-    vectors = movies["tags"].apply(text_to_vector).tolist()
-    n = len(vectors)
-    similarity = np.zeros((n, n))
 
-    for i in range(n):
-        for j in range(n):
-            similarity[i][j] = cosine_similarity_manual(vectors[i], vectors[j])
-
-    return similarity
 
 
 # -------------------- LOAD DATA --------------------
@@ -80,15 +70,27 @@ similarity = build_similarity(movies)
 # -------------------- RECOMMEND FUNCTION --------------------
 def recommend(movie):
     index = movies[movies["title"] == movie].index[0]
-    distances = list(enumerate(similarity[index]))
-    distances = sorted(distances, reverse=True, key=lambda x: x[1])[1:6]
+
+    target_vec = text_to_vector(movies.iloc[index]["tags"])
+
+    scores = []
+
+    for i in range(len(movies)):
+        if i == index:
+            continue
+
+        vec = text_to_vector(movies.iloc[i]["tags"])
+        score = cosine_similarity_manual(target_vec, vec)
+        scores.append((i, score))
+
+    scores = sorted(scores, key=lambda x: x[1], reverse=True)[:5]
 
     recommended_movies = []
     recommended_posters = []
 
-    for i in distances:
-        movie_id = movies.iloc[i[0]].movie_id
-        recommended_movies.append(movies.iloc[i[0]].title)
+    for i, _ in scores:
+        movie_id = movies.iloc[i].movie_id
+        recommended_movies.append(movies.iloc[i].title)
         recommended_posters.append(fetch_poster(movie_id))
 
     return recommended_movies, recommended_posters
