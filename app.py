@@ -3,31 +3,26 @@ import pickle
 import pandas as pd
 import numpy as np
 import requests
-import os
 from collections import Counter
 
 # -------------------- PAGE CONFIG --------------------
 st.set_page_config(page_title="Movie Recommender", layout="wide")
 
 # -------------------- CONFIG --------------------
-TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+TMDB_API_KEY = "f150a96d2baf9f4fbee4f80c73645d8f"
 PLACEHOLDER_POSTER = "assets/universal_movie_poster.png"
 
-# -------------------- FETCH POSTER --------------------
+# -------------------- FETCH POSTER (TMDB v3 CORRECT) --------------------
 @st.cache_data(show_spinner=False)
 def fetch_poster(movie_id):
-    if not TMDB_API_KEY:
-        return None
-
     url = f"https://api.themoviedb.org/3/movie/{movie_id}"
-
-    headers = {
-        "Authorization": f"Bearer {TMDB_API_KEY}",
-        "accept": "application/json"
+    params = {
+        "api_key": TMDB_API_KEY,
+        "language": "en-US"
     }
 
     try:
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(url, params=params, timeout=5)
         response.raise_for_status()
         data = response.json()
 
@@ -70,7 +65,7 @@ def get_vectors(tags_series):
     return tags_series.apply(text_to_vector).tolist()
 
 
-# -------------------- RECOMMEND FUNCTION (FAST) --------------------
+# -------------------- RECOMMEND FUNCTION --------------------
 def recommend(movie):
     vectors = get_vectors(movies["tags"])
 
@@ -78,7 +73,6 @@ def recommend(movie):
     target_vec = vectors[index]
 
     scores = []
-
     for i, vec in enumerate(vectors):
         if i == index:
             continue
